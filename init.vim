@@ -40,6 +40,7 @@ set autowriteall
 set hlsearch
 set switchbuf=uselast
 set directory=/tmp//
+set clipboard=unnamedplus
 
 filetype plugin indent on
 syntax on
@@ -55,10 +56,11 @@ packadd! dirvish
 packadd! autopair
 packadd! fuzzyfinder
 
+set clipboard=unnamedplus
+
 if exists('$SSH_TTY')
-  set clipmethod=osc52
-else
-  set clipboard=unnamedplus
+  packadd osc52
+  set clipmethod+=osc52
 endif
 
 augroup hackvim
