@@ -49,14 +49,14 @@ packadd! hlyank
 packadd! editorconfig
 packadd! termdebug
 packadd! matchit
-packadd! osc52
 
 packadd! dirvish
 packadd! autopair
 packadd! fuzzyfinder
 
 if exists('$SSH_TTY')
-  set clipmethod=osc52
+  packadd! osc52
+  set clipmethod+=osc52
 else
   set clipboard=unnamedplus
 endif
