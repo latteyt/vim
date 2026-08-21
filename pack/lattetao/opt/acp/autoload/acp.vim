@@ -71,42 +71,60 @@ export def Rpc_Notify(method: string, params: dict<any>): void
 enddef
 
 def Fs_Read(id: any, params: dict<any>): void
-  var path = get(params, 'path', '')
-  var line = get(params, 'line', 1)
-  var limit = get(params, 'limit', -1)
-  var lines: list<string> = []
-  var bnr = bufnr(path)
-  if bnr != -1 && bufloaded(bnr)
-    var last = limit > 0 ? line + limit - 1 : '$'
-    lines = getbufline(bnr, line, last)
-  else
-    lines = readfile(path)
-    if line > 1 || limit > 0
-      lines = lines[(line - 1) : (limit > 0 ? line + limit - 2 : -1)]
+  try
+    var path = get(params, 'path', '')
+    var line = get(params, 'line', 1)
+    var limit = get(params, 'limit', -1)
+    var lines: list<string> = []
+    var bnr = bufnr(path)
+    if bnr != -1 && bufloaded(bnr)
+      var last = limit > 0 ? line + limit - 1 : '$'
+      lines = getbufline(bnr, line, last)
+    else
+      lines = readfile(path)
+      if line > 1 || limit > 0
+        lines = lines[(line - 1) : (limit > 0 ? line + limit - 2 : -1)]
+      endif
     endif
-  endif
-  Rpc_Reply(id, { content: join(lines, "\n") .. (empty(lines) ? '' : "\n") })
+    Rpc_Reply(id, { content: join(lines, "\n") })
+  catch
+    Rpc_ReplyError(id, -32000, v:exception)
+  endtry
 enddef
 
 def Fs_Write(id: any, params: dict<any>): void
-  var path = get(params, 'path', '')
-  var content = get(params, 'content', '')
-  var lines = split(content, "\n", true)
-  var bnr = bufnr(path)
-  if bnr != -1 && bufloaded(bnr)
-    setbufvar(bnr, '&modifiable', true)
-    setbufline(bnr, 1, lines)
-    execute 'buffer ' .. bnr
-    silent! write
-    setbufvar(bnr, '&modifiable', false)
-  else
-    var dir = fnamemodify(path, ':h')
-    if !isdirectory(dir)
-      mkdir(dir, 'p')
+  try
+    var path = get(params, 'path', '')
+    var content = get(params, 'content', '')
+    var lines = split(content, "\n", true)
+    if lines == ['']
+      lines = []
     endif
-    writefile(lines, path)
-  endif
-  Rpc_Reply(id, v:null)
+    var bnr = bufnr(path)
+    if bnr != -1 && bufloaded(bnr)
+      setbufvar(bnr, '&modifiable', true)
+      var newlines: list<string> = empty(lines) ? [''] : lines
+      var oldcnt = len(getbufline(bnr, 1, '$'))
+      setbufline(bnr, 1, newlines)
+      if oldcnt > len(newlines)
+        deletebufline(bnr, len(newlines) + 1, '$')
+      endif
+      setbufvar(bnr, '&modifiable', false)
+      if !empty(path)
+        execute 'buffer ' .. bnr
+        silent! write
+      endif
+    else
+      var dir = fnamemodify(path, ':h')
+      if dir != '' && !isdirectory(dir)
+        mkdir(dir, 'p')
+      endif
+      writefile(lines, path)
+    endif
+    Rpc_Reply(id, v:null)
+  catch
+    Rpc_ReplyError(id, -32000, v:exception)
+  endtry
 enddef
 
 export def Session_Open(): void
