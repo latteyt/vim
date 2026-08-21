@@ -156,9 +156,6 @@ enddef
 def Ui_Buf(): number
   var bname = exists('g:acp_chat_bufname') ? g:acp_chat_bufname : 'acp://chat'
   var bnr = bufnr(bname, true)
-  if bnr == -1
-    bnr = bufadd(bname)
-  endif
   setbufvar(bnr, '&buftype', 'nofile')
   setbufvar(bnr, '&buflisted', false)
   setbufvar(bnr, '&swapfile', false)
@@ -170,7 +167,9 @@ enddef
 
 def Ui_AppendLine(text: string): void
   var bnr = Ui_Buf()
+  setbufvar(bnr, '&modifiable', true)
   appendbufline(bnr, '$', text)
+  setbufvar(bnr, '&modifiable', false)
   Ui_Scroll(bnr)
 enddef
 
