@@ -4,6 +4,9 @@ var channel: channel = null_channel
 var job: job = null_job
 var pending_calls: dict<func> = {}
 var next_id: number = 1
+var state: string = 'disconnected'
+var session_id: string = ''
+var agent_caps: dict<any> = {}
 
 def OnData(ch: channel, msg: string)
   var decoded: any = null
@@ -36,7 +39,8 @@ enddef
 
 def OnExit(ch: channel, status: number)
   pending_calls = {}
-  # Task 2 状态置 disconnected
+  state = 'disconnected'
+  session_id = ''
 enddef
 
 export def Rpc_Send(method: string, params: dict<any>, Callback: func = v:null): void
@@ -58,4 +62,50 @@ enddef
 
 export def Rpc_Notify(method: string, params: dict<any>): void
   ch_sendraw(channel, json_encode({ jsonrpc: '2.0', method: method, params: params }) .. "\n")
+enddef
+
+export def Session_Open(): void
+  if job != v:null && job_status(job) == 'run'
+    return
+  endif
+  var cwd = exists('g:acp_cwd') && g:acp_cwd != '' ? g:acp_cwd : getcwd()
+  var cmd = exists('g:acp_cmd') ? g:acp_cmd : ['opencode', 'acp']
+  var opts = {
+    in_mode: 'nl', out_mode: 'nl', err_mode: 'nl',
+    out_cb: OnData, err_cb: OnStderr, exit_cb: OnExit,
+  }
+  job = job_start(cmd + ['--cwd', cwd], opts)
+  channel = job_getchannel(job)
+  state = 'initializing'
+  Init_()
+enddef
+
+def Init_(): void
+  Rpc_Send('initialize', {
+    protocolVersion: 1,
+    clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
+    clientInfo: { name: 'acp-vim', title: 'ACP Vim', version: '0.1.0' },
+  }, (resp) => OnInitResp(resp))
+enddef
+
+def OnInitResp(resp: dict<any>): void
+  if has_key(resp, 'error') || get(get(resp, 'result', {}), 'protocolVersion', 0) != 1
+    state = 'disconnected'
+    return
+  endif
+  agent_caps = get(get(resp, 'result', {}), 'agentCapabilities', {})
+  state = 'newing'
+  Rpc_Send('session/new', {
+    cwd: exists('g:acp_cwd') && g:acp_cwd != '' ? g:acp_cwd : getcwd(),
+    mcpServers: [],
+  }, (resp2) => OnNewResp(resp2))
+enddef
+
+def OnNewResp(resp: dict<any>): void
+  if has_key(resp, 'error')
+    state = 'disconnected'
+    return
+  endif
+  session_id = get(get(resp, 'result', {}), 'sessionId', '')
+  state = 'ready'
 enddef
