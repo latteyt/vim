@@ -103,6 +103,7 @@ def Fs_Write(id: any, params: dict<any>): void
     endif
     var bnr = bufnr(path)
     if bnr != -1 && bufloaded(bnr)
+      var saved_mod = getbufvar(bnr, '&modifiable', false)
       setbufvar(bnr, '&modifiable', true)
       var newlines: list<string> = empty(lines) ? [''] : lines
       var oldcnt = len(getbufline(bnr, 1, '$'))
@@ -110,11 +111,11 @@ def Fs_Write(id: any, params: dict<any>): void
       if oldcnt > len(newlines)
         deletebufline(bnr, len(newlines) + 1, '$')
       endif
-      setbufvar(bnr, '&modifiable', false)
       if !empty(path)
-        execute 'buffer ' .. bnr
-        silent! write
+        writefile(getbufline(bnr, 1, '$'), path)
+        setbufvar(bnr, '&modified', false)
       endif
+      setbufvar(bnr, '&modifiable', saved_mod)
     else
       var dir = fnamemodify(path, ':h')
       if dir != '' && !isdirectory(dir)
@@ -170,6 +171,13 @@ export def Session_Open(): void
   }
   job = job_start(cmd + ['--cwd', cwd], opts)
   channel = job_getchannel(job)
+  if job_status(job) == 'fail' || channel == null_channel
+    state = 'disconnected'
+    job = null_job
+    channel = null_channel
+    echom '[acp] failed to start: ' .. string(cmd)
+    return
+  endif
   state = 'initializing'
   Init_()
 enddef
@@ -185,6 +193,11 @@ enddef
 def OnInitResp(resp: dict<any>): void
   if has_key(resp, 'error') || get(get(resp, 'result', {}), 'protocolVersion', 0) != 1
     state = 'disconnected'
+    session_id = ''
+    agent_caps = {}
+    if job != null_job && job_status(job) == 'run'
+      job_stop(job)
+    endif
     return
   endif
   agent_caps = get(get(resp, 'result', {}), 'agentCapabilities', {})
@@ -198,6 +211,11 @@ enddef
 def OnNewResp(resp: dict<any>): void
   if has_key(resp, 'error')
     state = 'disconnected'
+    session_id = ''
+    agent_caps = {}
+    if job != null_job && job_status(job) == 'run'
+      job_stop(job)
+    endif
     return
   endif
   session_id = get(get(resp, 'result', {}), 'sessionId', '')
@@ -213,6 +231,7 @@ export def Session_Prompt(text: string): void
     sessionId: session_id,
     prompt: [{ type: 'text', text: text }],
   }, (resp) => OnPromptResp(resp))
+  state = 'prompting'
 enddef
 
 export def Session_Cancel(): void
@@ -223,6 +242,7 @@ enddef
 
 def OnPromptResp(resp: dict<any>): void
   # stopReason 已到，轮次结束；MVP 不额外渲染
+  state = 'ready'
   if exists('g:AcpOnPromptResp') && type(g:AcpOnPromptResp) == v:t_func
     call(g:AcpOnPromptResp, [resp])
   endif

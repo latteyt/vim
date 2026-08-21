@@ -7,6 +7,7 @@ g:loaded_acp = v:true
 command! AcpOpen call acp#Ui_Open()
 command! -nargs=+ AcpPrompt call acp#Session_Prompt(<q-args>)
 command! AcpCancel call acp#Session_Cancel()
+command! AcpClose call acp#Close()
 
 if get(g:, 'acp_map', 1)
   nnoremap <leader>ao :AcpOpen<CR>
