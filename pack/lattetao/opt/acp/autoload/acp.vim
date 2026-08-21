@@ -20,7 +20,13 @@ def OnData(ch: channel, msg: string)
   endif
   # 有 method 且有 id → agent 调 client（请求）；无 method 有 id → 响应；仅 method → 通知
   if has_key(decoded, 'method') && has_key(decoded, 'id')
-    # Task 5/6 分发
+    if decoded.method == 'fs/read_text_file'
+      Fs_Read(decoded.id, decoded.params)
+    elseif decoded.method == 'fs/write_text_file'
+      Fs_Write(decoded.id, decoded.params)
+    elseif decoded.method == 'session/request_permission'
+      Perm_Decide(decoded.id, decoded.params)   # Task 6
+    endif
   elseif has_key(decoded, 'id')
     if has_key(pending_calls, decoded.id)
       var cb = remove(pending_calls, decoded.id)
@@ -62,6 +68,45 @@ enddef
 
 export def Rpc_Notify(method: string, params: dict<any>): void
   ch_sendraw(channel, json_encode({ jsonrpc: '2.0', method: method, params: params }) .. "\n")
+enddef
+
+def Fs_Read(id: any, params: dict<any>): void
+  var path = get(params, 'path', '')
+  var line = get(params, 'line', 1)
+  var limit = get(params, 'limit', -1)
+  var lines: list<string> = []
+  var bnr = bufnr(path)
+  if bnr != -1 && bufloaded(bnr)
+    var last = limit > 0 ? line + limit - 1 : '$'
+    lines = getbufline(bnr, line, last)
+  else
+    lines = readfile(path)
+    if line > 1 || limit > 0
+      lines = lines[(line - 1) : (limit > 0 ? line + limit - 2 : -1)]
+    endif
+  endif
+  Rpc_Reply(id, { content: join(lines, "\n") .. (empty(lines) ? '' : "\n") })
+enddef
+
+def Fs_Write(id: any, params: dict<any>): void
+  var path = get(params, 'path', '')
+  var content = get(params, 'content', '')
+  var lines = split(content, "\n", true)
+  var bnr = bufnr(path)
+  if bnr != -1 && bufloaded(bnr)
+    setbufvar(bnr, '&modifiable', true)
+    setbufline(bnr, 1, lines)
+    execute 'buffer ' .. bnr
+    silent! write
+    setbufvar(bnr, '&modifiable', false)
+  else
+    var dir = fnamemodify(path, ':h')
+    if !isdirectory(dir)
+      mkdir(dir, 'p')
+    endif
+    writefile(lines, path)
+  endif
+  Rpc_Reply(id, v:null)
 enddef
 
 export def Session_Open(): void
