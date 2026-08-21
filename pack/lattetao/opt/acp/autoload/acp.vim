@@ -27,7 +27,7 @@ def OnData(ch: channel, msg: string)
       cb(decoded)
     endif
   elseif has_key(decoded, 'method')
-    # session/update → Task 3 分发
+    OnNotification(decoded)
   endif
 enddef
 
@@ -108,4 +108,59 @@ def OnNewResp(resp: dict<any>): void
   endif
   session_id = get(get(resp, 'result', {}), 'sessionId', '')
   state = 'ready'
+enddef
+
+export def Session_Prompt(text: string): void
+  if state != 'ready'
+    return
+  endif
+  Ui_EchoUser(text)
+  Rpc_Send('session/prompt', {
+    sessionId: session_id,
+    prompt: [{ type: 'text', text: text }],
+  }, (resp) => OnPromptResp(resp))
+enddef
+
+export def Session_Cancel(): void
+  if session_id != ''
+    Rpc_Notify('session/cancel', { sessionId: session_id })
+  endif
+enddef
+
+def OnPromptResp(resp: dict<any>): void
+  # stopReason 已到，轮次结束；MVP 不额外渲染
+enddef
+
+def OnNotification(msg: dict<any>): void
+  if msg.method == 'session/update'
+    OnUpdate(get(msg.params, 'update', {}))
+  endif
+enddef
+
+def OnUpdate(update: dict<any>): void
+  var kind = get(update, 'sessionUpdate', '')
+  if kind == 'agent_message_chunk'
+    Ui_AppendAgent(update)
+  elseif kind == 'tool_call'
+    Ui_AppendLine('[工具] ' .. get(update, 'title', ''))
+    # 收集 locations 供 Task 6
+  elseif kind == 'tool_call_update'
+    Ui_AppendLine('[工具] ' .. get(update, 'title', '') .. ' -> ' .. get(update, 'status', ''))
+  elseif kind == 'plan'
+    for e in get(update, 'entries', [])
+      Ui_AppendLine(get(e, 'priority', '') .. ': ' .. get(e, 'content', ''))
+    endfor
+  endif
+enddef
+
+def Ui_AppendLine(text: string): void
+  # Task 4 完善
+enddef
+
+def Ui_AppendAgent(update: dict<any>): void
+  # Task 4 完善
+enddef
+
+def Ui_EchoUser(text: string): void
+  # Task 4 完善
 enddef
