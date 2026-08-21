@@ -7,6 +7,7 @@ var next_id: number = 1
 var state: string = 'disconnected'
 var session_id: string = ''
 var agent_caps: dict<any> = {}
+var tool_locations: dict<list<dict<any>>> = {}
 
 def OnData(ch: channel, msg: string)
   var decoded: any = null
@@ -127,6 +128,36 @@ def Fs_Write(id: any, params: dict<any>): void
   endtry
 enddef
 
+def Perm_Decide(id: any, params: dict<any>): void
+  var toolCall = get(params, 'toolCall', {})
+  var tc_id = get(toolCall, 'toolCallId', '')
+  var locs = get(toolCall, 'locations', [])
+  if empty(locs) && has_key(tool_locations, tc_id)
+    locs = tool_locations[tc_id]
+  endif
+  var in_buf = false
+  for l in locs
+    var p = get(l, 'path', '')
+    if p != '' && bufnr(p) != -1 && bufloaded(bufnr(p))
+      in_buf = true
+      break
+    endif
+  endfor
+  var want = in_buf ? 'allow_once' : 'reject_once'
+  var option_id = ''
+  for o in get(params, 'options', [])
+    if get(o, 'kind', '') == want
+      option_id = get(o, 'optionId', '')
+      break
+    endif
+  endfor
+  if option_id != ''
+    Rpc_Reply(id, { outcome: { outcome: 'selected', optionId: option_id } })
+  else
+    Rpc_Reply(id, { outcome: { outcome: 'cancelled' } })
+  endif
+enddef
+
 export def Session_Open(): void
   if job != v:null && job_status(job) == 'run'
     return
@@ -206,7 +237,10 @@ def OnUpdate(update: dict<any>): void
     Ui_AppendAgent(update)
   elseif kind == 'tool_call'
     Ui_AppendLine('[工具] ' .. get(update, 'title', ''))
-    # 收集 locations 供 Task 6
+    var locs = get(update, 'locations', [])
+    if !empty(locs)
+      tool_locations[get(update, 'toolCallId', '')] = locs
+    endif
   elseif kind == 'tool_call_update'
     Ui_AppendLine('[工具] ' .. get(update, 'title', '') .. ' -> ' .. get(update, 'status', ''))
   elseif kind == 'plan'
