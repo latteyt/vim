@@ -30,8 +30,8 @@ def OnData(ch: channel, msg: string)
     endif
   elseif has_key(decoded, 'id')
     if has_key(pending_calls, decoded.id)
-      var cb = remove(pending_calls, decoded.id)
-      cb(decoded)
+      var Cb = remove(pending_calls, decoded.id)
+      Cb(decoded)
     endif
   elseif has_key(decoded, 'method')
     OnNotification(decoded)
@@ -50,10 +50,10 @@ def OnExit(ch: channel, status: number)
   session_id = ''
 enddef
 
-export def Rpc_Send(method: string, params: dict<any>, Callback: func = v:null): void
+export def Rpc_Send(method: string, params: dict<any>, Callback: func = null_function): void
   var req = { jsonrpc: '2.0', id: next_id, method: method, params: params }
   next_id += 1
-  if Callback != v:null
+  if Callback != null_function
     pending_calls[req.id] = Callback
   endif
   ch_sendraw(channel, json_encode(req) .. "\n")
@@ -223,6 +223,9 @@ enddef
 
 def OnPromptResp(resp: dict<any>): void
   # stopReason 已到，轮次结束；MVP 不额外渲染
+  if exists('g:AcpOnPromptResp') && type(g:AcpOnPromptResp) == v:t_func
+    call(g:AcpOnPromptResp, [resp])
+  endif
 enddef
 
 def OnNotification(msg: dict<any>): void
@@ -253,6 +256,9 @@ enddef
 def Ui_Buf(): number
   var bname = exists('g:acp_chat_bufname') ? g:acp_chat_bufname : 'acp://chat'
   var bnr = bufnr(bname, true)
+  if !bufloaded(bnr)
+    bufload(bnr)
+  endif
   setbufvar(bnr, '&buftype', 'nofile')
   setbufvar(bnr, '&buflisted', false)
   setbufvar(bnr, '&swapfile', false)
@@ -297,6 +303,10 @@ export def Ui_Open(): void
   if win_findbuf(bnr)->empty()
     execute 'sbuffer ' .. bnr
   endif
+enddef
+
+export def State(): string
+  return state
 enddef
 
 export def Close(): void

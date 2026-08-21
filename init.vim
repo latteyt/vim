@@ -55,6 +55,7 @@ packadd! osc52
 packadd! dirvish
 packadd! autopair
 packadd! fuzzyfinder
+packadd! acp
 
 set clipboard=unnamedplus
 
