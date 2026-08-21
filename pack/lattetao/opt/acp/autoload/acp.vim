@@ -153,14 +153,52 @@ def OnUpdate(update: dict<any>): void
   endif
 enddef
 
+def Ui_Buf(): number
+  var bname = exists('g:acp_chat_bufname') ? g:acp_chat_bufname : 'acp://chat'
+  var bnr = bufnr(bname, true)
+  if bnr == -1
+    bnr = bufadd(bname)
+  endif
+  setbufvar(bnr, '&buftype', 'nofile')
+  setbufvar(bnr, '&buflisted', false)
+  setbufvar(bnr, '&swapfile', false)
+  setbufvar(bnr, '&undofile', false)
+  setbufvar(bnr, '&modifiable', false)
+  setbufvar(bnr, 'acp_chat', 1)
+  return bnr
+enddef
+
 def Ui_AppendLine(text: string): void
-  # Task 4 完善
+  var bnr = Ui_Buf()
+  appendbufline(bnr, '$', text)
+  Ui_Scroll(bnr)
 enddef
 
 def Ui_AppendAgent(update: dict<any>): void
-  # Task 4 完善
+  var content = get(update, 'content', {})
+  if get(content, 'type', '') == 'text'
+    Ui_AppendLine(get(content, 'text', ''))
+  endif
 enddef
 
 def Ui_EchoUser(text: string): void
-  # Task 4 完善
+  Ui_AppendLine('> ' .. text)
+enddef
+
+def Ui_Scroll(bnr: number): void
+  var wins = win_findbuf(bnr)
+  for w in wins
+    win_execute(w, 'normal! G')
+  endfor
+enddef
+
+export def Ui_Open(): void
+  Session_Open()
+  var bnr = Ui_Buf()
+  if !bufloaded(bnr)
+    bufload(bnr)
+  endif
+  if win_findbuf(bnr)->empty()
+    execute 'sbuffer ' .. bnr
+  endif
 enddef
