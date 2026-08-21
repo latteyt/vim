@@ -19,8 +19,8 @@ def OnData(ch: channel, msg: string)
   if has_key(decoded, 'method') && has_key(decoded, 'id')
     # Task 5/6 分发
   elseif has_key(decoded, 'id')
-    var cb = remove(pending_calls, decoded.id)
-    if cb != v:null
+    if has_key(pending_calls, decoded.id)
+      var cb = remove(pending_calls, decoded.id)
       cb(decoded)
     endif
   elseif has_key(decoded, 'method')
