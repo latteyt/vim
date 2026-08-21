@@ -298,3 +298,9 @@ export def Ui_Open(): void
     execute 'sbuffer ' .. bnr
   endif
 enddef
+
+export def Close(): void
+  if job != v:null && job_status(job) == 'run'
+    job_stop(job)
+  endif
+enddef
