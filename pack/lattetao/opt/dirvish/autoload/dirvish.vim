@@ -62,6 +62,7 @@ export def Hijack()
   endfor
 
   if &filetype == 'dirvish'
+    execute($'file {expand('%:p')}')
     execute($'lcd {expand('%:p')}')
     nnoremap <buffer> R <Cmd>call dirvish#Hijack()<CR>
 

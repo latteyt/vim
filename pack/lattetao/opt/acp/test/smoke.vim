@@ -1,7 +1,6 @@
 vim9script
 
 var logfile = '/tmp/opencode/acp_smoke.log'
-var bname = 'acp://chat'
 var stop_reason: string = ''
 var got_stop: bool = false
 
@@ -25,24 +24,23 @@ packadd acp
 var cwd = '/tmp/opencode/acp_smoke_cwd'
 mkdir(cwd, 'p')
 g:acp_cwd = cwd
-g:acp_chat_bufname = bname
 g:AcpOnPromptResp = OnPromptResp
 
 Log('STEP1 open: acp#Session_Open()')
 acp#Session_Open()
-Log('state after open: ' .. acp#State())
+Log('ready after open: ' .. acp#Ready())
 
 var ready = false
 var i = 0
 while i < 200
   sleep 100m
-  if acp#State() == 'ready'
+  if acp#Ready()
     ready = true
     break
   endif
   i += 1
 endwhile
-Log('STATE_READY ' .. (ready ? 'true' : 'false') .. ' final_state=' .. acp#State())
+Log('STATE_READY ' .. (ready ? 'true' : 'false') .. ' ready=' .. acp#Ready())
 
 if !ready
   Log('RESULT FAIL')
@@ -58,7 +56,7 @@ var j = 0
 while j < 600
   sleep 100m
   if !chunk
-    var bnr = bufnr(bname, true)
+    var bnr = acp#CurrentBuf()
     var blines = getbufline(bnr, 1, '$')
     for l in blines
       if l != '' && l[: 1] != '> '
@@ -73,7 +71,7 @@ while j < 600
   j += 1
 endwhile
 
-var bnr2 = bufnr(bname, true)
+var bnr2 = acp#CurrentBuf()
 var blines2 = getbufline(bnr2, 1, '$')
 Log('AGENT_MESSAGE_CHUNK ' .. (chunk ? 'true' : 'false'))
 Log('STOP_REASON_ARRIVED ' .. (got_stop ? 'true' : 'false') .. ' stop_reason=' .. string(stop_reason))

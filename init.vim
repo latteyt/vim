@@ -35,6 +35,8 @@ set wildmode=noselect:lastused,full
 set wildoptions=fuzzy,pum
 set laststatus=2
 set shortmess+=F
+set updatetime=2000
+set updatecount=20
 set autoread
 set autowriteall
 set hlsearch
@@ -50,24 +52,26 @@ packadd! hlyank
 packadd! editorconfig
 packadd! termdebug
 packadd! matchit
-packadd! osc52
 
 packadd! dirvish
 packadd! autopair
-packadd! fuzzyfinder
-packadd! acp
+packadd! fzf
+
+packadd! llm
+packadd! fim
+
 
 set clipboard=unnamedplus
 
 if exists('$SSH_TTY')
-  packadd osc52
+  packadd! osc52
   set clipmethod+=osc52
 endif
 
 augroup hackvim
   autocmd!
   autocmd CmdlineChanged [:/?] call wildtrigger()
-  autocmd BufReadPost * silent! normal! g`"
+  autocmd BufReadPost * silent! exe 'normal! g`"'
   autocmd BufWritePre * call execute('keeppatterns :%s/\s\+$//e')
   autocmd FileType python setlocal tabstop=4 shiftwidth=4 expandtab
 augroup END
@@ -132,7 +136,5 @@ cnoreabbrev WQ wq
 cnoreabbrev W w
 cnoreabbrev Q q
 cnoreabbrev Qall qall
-
-cnoreabbrev grep grep!
 
 

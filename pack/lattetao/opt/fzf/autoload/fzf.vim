@@ -1,36 +1,35 @@
 vim9script
 
 var filescache: list<string> = []
+var job: job = null_job
 
 def ResetCache()
   filescache = []
 enddef
 
+
 def EnsureCache()
   if empty(filescache)
+    if job != null_job && job_status(job) == 'run'
+      return
+    endif
     autocmd CmdlineLeave : ++once call ResetCache()
 
-    filescache = systemlist('timeout 5 rg --files 2>/dev/null')
-    var dirs: dict<bool> = {}
-    for f in filescache
-      var d = fnamemodify(f, ':h')
-      while d != '' && d != '.'
-        dirs[d] = v:true
-        d = fnamemodify(d, ':h')
-      endwhile
-    endfor
-    for d in keys(dirs)
-      filescache->add(d .. '/')
-    endfor
+    job = job_start('timeout 10 rg --files', {
+      out_cb: (_: channel, m: string) => {
+        filescache->add(m)
+      },
+      err_io: 'null',
+    })
   endif
 enddef
 
-export def FuzzComplete(ArgLead: string, CmdLine: string, CursorPos: number): list<string>
+export def Complete(ArgLead: string, CmdLine: string, CursorPos: number): list<string>
   EnsureCache()
   return empty(ArgLead) ? filescache : matchfuzzy(filescache, ArgLead)
 enddef
 
-export def OpenFuzz(arg: string)
+export def Open(arg: string)
   EnsureCache()
   var matches = matchfuzzy(filescache, arg)
   if empty(matches)
