@@ -57,8 +57,10 @@ packadd! dirvish
 packadd! autopair
 packadd! fzf
 
-packadd! llm
-packadd! fim
+if exists('$DEEPSEEK_API_KEY')
+  packadd! llm
+  packadd! fim
+endif
 
 
 set clipboard=unnamedplus
