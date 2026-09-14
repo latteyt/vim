@@ -30,13 +30,6 @@ export def Complete(ArgLead: string, CmdLine: string, CursorPos: number): list<s
 enddef
 
 export def Open(arg: string)
-  EnsureCache()
-  var matches = matchfuzzy(filescache, arg)
-  if empty(matches)
-    echohl ErrorMsg | echo 'No match for: ' .. arg | echohl None
-    return
-  endif
-  var target = matches[0]->substitute('/$', '', '')
-  execute 'edit ' .. fnameescape(target)
+  execute 'edit ' .. fnameescape(arg)
 enddef
 

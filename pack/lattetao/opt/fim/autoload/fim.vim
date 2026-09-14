@@ -4,7 +4,6 @@ vim9script
 #
 
 var curl_job: job = null_job
-var debounce_timer: number = -1
 
 var context: dict<any> = {
   bufnr: -1,
@@ -14,8 +13,6 @@ var context: dict<any> = {
 }
 
 
-# 防抖间隔（毫秒）
-const DEBOUNCE_MS = 1000
 # 最大生成 token 数
 const MAX_TOKENS = 256
 # 请求超时（秒）
@@ -34,7 +31,6 @@ enddef
 
 # 渲染虚拟文本：第一行 inline 在光标后，后续行 below。
 def Render()
-
   if empty(context.text) || context.bufnr != bufnr('%') || context.lnum != line('.') || context.col != col('.')
     return
   endif
@@ -42,12 +38,12 @@ def Render()
   if mode() !~ '^i' | return | endif
   if pumvisible() | feedkeys("\<C-e>", 'n') | endif
 
-  echomsg json_encode(context.text)
+  # echomsg json_encode(context.text)
   var lines: list<string> = split(context.text, "\r\n\\=\\|\n", true)
   prop_add(context.lnum, context.col, {'type': 'FimVT', 'text': lines[0]})
   for line in lines[1 : ]
     # FIXME `text_prop` BUG: 0-with is not allowed
-    prop_add(context.lnum, 0, {'type': 'FimVT', 'text': line ?? "\n\n\n", 'text_align': 'below'})
+    prop_add(context.lnum, 0, {'type': 'FimVT', 'text': line ?? "\n", 'text_align': 'below'})
   endfor
 enddef
 
@@ -57,26 +53,19 @@ def OnExit(j: job, status: number)
   endif
 enddef
 
-export def Complete()
-  if debounce_timer > 0
-    timer_stop(debounce_timer)
-  endif
-  debounce_timer = timer_start(DEBOUNCE_MS, (_) => {
-    Request()
-  }, {repeat: 1})
-enddef
 
 export def OnKeyInput()
-  if index(get(g:, "cancel_keys", g:default_cancel_keys), v:char) >= 0
+  var keys: list<string> = [ "\<Tab>", "\<C-j>", "\<C-l>" ]
+  if index(keys, v:char) == -1
     var bufnr: number = str2nr(expand('<abuf>'))
     prop_remove({'type': 'FimVT', 'bufnr': bufnr, 'all': true})
   endif
 enddef
 
+
 export def OnInsertChar()
   var bufnr: number = str2nr(expand('<abuf>'))
   prop_remove({'type': 'FimVT', 'bufnr': bufnr, 'all': true})
-  Complete()
 enddef
 
 export def OnInsertLeave()
@@ -86,32 +75,32 @@ export def OnInsertLeave()
   if curl_job != null_job
     job_stop(curl_job)
   endif
-  if debounce_timer > 0
-    timer_stop(debounce_timer)
-  endif
 enddef
 
 
-def Request()
-  if curl_job != null_job
+def Request(): string
+  if curl_job != null_job || job_status(curl_job) == 'run'
     job_stop(curl_job)
   endif
 
   context = {bufnr: bufnr('%'), lnum: line('.'), col: col('.'), text: ''}
-
   # 其他文件 buffer（buftype 为空）的内容，作为全局上下文前缀
   var before: list<string> = []
   for info in getbufinfo({'buflisted': true})
     if info.bufnr == context.bufnr || getbufvar(info.bufnr, '&buftype') != ''
       continue
     endif
-    before->add($'// file: {(info.name ?? '[No Name]')} filetype: {(getbufvar(info.bufnr, '&filetype') ?? 'none')}')
+    var commentstring: string = getbufvar(info.bufnr, "&commentstring")
+    before->add(printf(commentstring, $'file: {(info.name ?? '[No Name]')}'))
+    before->add(printf(commentstring, $'filetype: {(getbufvar(info.bufnr, '&filetype') ?? 'none')}'))
     before->extend(getbufline(info.bufnr, 1, '$'))
-    before->add('')
+    before->add(printf(commentstring, info.name->empty() ? $'end of {info.name}' : 'end of file'))
   endfor
 
   var info = getbufinfo('%')[0]
-  before->add($'// file: {(info.name ?? '[No Name]')} filetype: {(getbufvar(info.bufnr, '&filetype') ?? 'none')}')
+  var commentstring: string = getbufvar(info.bufnr, "&commentstring")
+  before->add(printf(commentstring, $'file: {(info.name ?? '[No Name]')}'))
+  before->add(printf(commentstring, $'filetype: {(getbufvar(info.bufnr, '&filetype') ?? 'none')}'))
   before->extend(getbufline(context.bufnr, 1, context.lnum - 1))
 
   var after = getbufline(context.bufnr, context.lnum + 1, '$')
@@ -124,7 +113,6 @@ def Request()
     'max_tokens': MAX_TOKENS
   }
 
-
   curl_job = job_start(
     ['curl', '-sS', '--max-time', string(REQUEST_TIMEOUT_S),
     'https://api.deepseek.com/beta/completions',
@@ -132,6 +120,7 @@ def Request()
     '-H', 'Authorization: Bearer ' .. $DEEPSEEK_API_KEY,
     '-d', json_encode(body)],
     {'out_mode': 'raw', 'out_cb': OnOut, 'exit_cb': OnExit})
+  return ''
 enddef
 
 
@@ -216,7 +205,7 @@ export def AcceptLine(): string
 enddef
 
 # 核心逻辑：换候选
-export def Next(): string
+export def Suggest(): string
   timer_start(0, (_) => {
     prop_remove({'type': 'FimVT', 'bufnr': bufnr('%'), 'all': true})
     Request()

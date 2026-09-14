@@ -6,7 +6,7 @@ export def Sync()
   if sync_timer != -1
     timer_stop(sync_timer)
   endif
-  sync_timer = timer_start(&updatetime, (_) => {
+  sync_timer = timer_start(10000, (_) => {
     if &buftype == ''
       var view = winsaveview()
       silent! update

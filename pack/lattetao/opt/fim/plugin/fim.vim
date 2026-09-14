@@ -16,15 +16,19 @@ endif
 
 augroup fim_plugin
   autocmd!
-  autocmd KeyInputPre * call fim#OnKeyInput()
+  autocmd KeyInputPre i call fim#OnKeyInput()
   autocmd InsertCharPre * call fim#OnInsertChar()
   autocmd InsertLeave * call fim#OnInsertLeave()
 augroup END
 
+
+
+imap <script><silent><nowait> <C-g><C-g> <C-r>=fim#Suggest()<Cr>
 imap <script><silent><nowait><expr> <Tab> fim#HasFimVT() ? fim#AcceptWord() : "\<Tab>"
 imap <script><silent><nowait><expr> <C-j> fim#HasFimVT() ? fim#AcceptAll() : "\<C-j>"
 imap <script><silent><nowait><expr> <C-l> fim#HasFimVT() ? fim#AcceptLine() : "\<C-l>"
-imap <script><silent><nowait><expr> <C-p> fim#HasFimVT() ? fim#Next() : "\<C-p>"
+
+
 
 
 

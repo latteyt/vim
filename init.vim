@@ -38,11 +38,11 @@ set shortmess+=F
 set updatetime=2000
 set updatecount=20
 set autoread
-set autowriteall
 set hlsearch
 set switchbuf=uselast
 set directory=/tmp//
 set clipboard=unnamedplus
+set smartcase
 
 filetype plugin indent on
 syntax on
@@ -56,6 +56,7 @@ packadd! matchit
 packadd! dirvish
 packadd! autopair
 packadd! fzf
+packadd! lsp
 
 if exists('$DEEPSEEK_API_KEY')
   packadd! llm
@@ -74,7 +75,7 @@ augroup hackvim
   autocmd!
   autocmd CmdlineChanged [:/?] call wildtrigger()
   autocmd BufReadPost * silent! exe 'normal! g`"'
-  autocmd BufWritePre * call execute('keeppatterns :%s/\s\+$//e')
+  autocmd VimLeavePre * bufdo keeppatterns :%s/\s\+$//e | update
   autocmd FileType python setlocal tabstop=4 shiftwidth=4 expandtab
 augroup END
 
@@ -84,42 +85,35 @@ augroup END
 iabbrev <expr> date`` strftime("%Y-%m-%d %H:%M")
 iabbrev <expr> email`` "yangtao97@nudt.edu.cn"
 
-def Ensure2Win(cmd: string)
-  if winnr('$') < 2
-    split
-  endif
-  exe (v:count == 0 ? '' : ':' .. string(v:count)) .. cmd
-enddef
+nnoremap <silent> [a :<C-U>exe v:count1 . "previous"<CR>
+nnoremap <silent> ]a :<C-U>exe v:count1 . "next"<CR>
+nnoremap <silent> [A :<C-U>exe v:count1 . "first"<CR>
+nnoremap <silent> ]A :<C-U>exe v:count1 . "last"<CR>
 
-nnoremap [a <ScriptCmd>Ensure2Win("previous")<CR>
-nnoremap ]a <ScriptCmd>Ensure2Win("next")<CR>
-nnoremap [A <ScriptCmd>Ensure2Win("first")<CR>
-nnoremap ]A <ScriptCmd>Ensure2Win("last")<CR>
+nnoremap <silent> [b :<C-U>exe v:count1 . "bprevious"<CR>
+nnoremap <silent> ]b :<C-U>exe v:count1 . "bnext"<CR>
+nnoremap <silent> [B :<C-U>exe v:count1 . "bfirst"<CR>
+nnoremap <silent> ]B :<C-U>exe v:count1 . "blast"<CR>
 
-nnoremap [b <ScriptCmd>Ensure2Win("bprevious")<CR>
-nnoremap ]b <ScriptCmd>Ensure2Win("bnext")<CR>
-nnoremap [B <ScriptCmd>Ensure2Win("bfirst")<CR>
-nnoremap ]B <ScriptCmd>Ensure2Win("blast")<CR>
+nnoremap <silent> [l :<C-U>exe v:count1 . "lprevious"<CR>
+nnoremap <silent> ]l :<C-U>exe v:count1 . "lnext"<CR>
+nnoremap <silent> [L :<C-U>exe v:count1 . "lfirst"<CR>
+nnoremap <silent> ]L :<C-U>exe v:count1 . "llast"<CR>
 
-nnoremap [l <ScriptCmd>Ensure2Win("lprevious")<CR>
-nnoremap ]l <ScriptCmd>Ensure2Win("lnext")<CR>
-nnoremap [L <ScriptCmd>Ensure2Win("lfirst")<CR>
-nnoremap ]L <ScriptCmd>Ensure2Win("llast")<CR>
+nnoremap <silent> [q :<C-U>exe v:count1 . "cprevious"<CR>
+nnoremap <silent> ]q :<C-U>exe v:count1 . "cnext"<CR>
+nnoremap <silent> [Q :<C-U>exe v:count1 . "cfirst"<CR>
+nnoremap <silent> ]Q :<C-U>exe v:count1 . "clast"<CR>
 
-nnoremap [q <ScriptCmd>Ensure2Win("cprevious")<CR>
-nnoremap ]q <ScriptCmd>Ensure2Win("cnext")<CR>
-nnoremap [Q <ScriptCmd>Ensure2Win("cfirst")<CR>
-nnoremap ]Q <ScriptCmd>Ensure2Win("clast")<CR>
+nnoremap <silent> [t :<C-U>exe v:count1 . "tprevious"<CR>
+nnoremap <silent> ]t :<C-U>exe v:count1 . "tnext"<CR>
+nnoremap <silent> [T :<C-U>exe v:count1 . "tfirst"<CR>
+nnoremap <silent> ]T :<C-U>exe v:count1 . "tlast"<CR>
 
-nnoremap [t <ScriptCmd>Ensure2Win("tprevious")<CR>
-nnoremap ]t <ScriptCmd>Ensure2Win("tnext")<CR>
-nnoremap [T <ScriptCmd>Ensure2Win("tfirst")<CR>
-nnoremap ]T <ScriptCmd>Ensure2Win("tlast")<CR>
-
-nnoremap [<C-Q> <ScriptCmd>Ensure2Win("cpfile")<CR>
-nnoremap ]<C-Q> <ScriptCmd>Ensure2Win("cnfile")<CR>
-nnoremap [<C-L> <ScriptCmd>Ensure2Win("lpfile")<CR>
-nnoremap ]<C-L> <ScriptCmd>Ensure2Win("lnfile")<CR>
+nnoremap <silent> [<C-Q> :<C-U>exe v:count1 . "cpfile"<CR>
+nnoremap <silent> ]<C-Q> :<C-U>exe v:count1 . "cnfile"<CR>
+nnoremap <silent> [<C-L> :<C-U>exe v:count1 . "lpfile"<CR>
+nnoremap <silent> ]<C-L> :<C-U>exe v:count1 . "lnfile"<CR>
 
 nnoremap <silent> [<C-T> :<C-U>exe v:count1 . "ptprevious"<CR>
 nnoremap <silent> ]<C-T> :<C-U>exe v:count1 . "ptnext"<CR>
@@ -138,5 +132,6 @@ cnoreabbrev WQ wq
 cnoreabbrev W w
 cnoreabbrev Q q
 cnoreabbrev Qall qall
+
 
 
