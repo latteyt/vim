@@ -170,6 +170,9 @@ export def OnDone(bufnr: number): void
   if empty(v:completed_item) | return | endif
   util.Log('completion done: ' .. json_encode(v:completed_item))
   util.Log('completion event: ' .. json_encode(v:event))
+  if !v:completed_item->has_key('user_data') || v:completed_item.user_data->type() != type({})
+    return
+  endif
   var edits: list<dict<any>> = get(v:completed_item, 'user_data', {})
     ->get('textEdits', [])
   if !empty(edits)

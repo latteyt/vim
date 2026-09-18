@@ -23,7 +23,27 @@ if !exists('g:lsp_config')
     python: {
       cmd: ['basedpyright-langserver', '--stdio'],
       root_patterns: ['pyproject.toml', 'pyrightconfig.json', '.venv/', '.git/'],
-      settings: {}
+      settings: {
+        basedpyright: {
+          analysis: {
+            typeCheckingMode: 'standard',
+            diagnosticSeverityOverrides: {
+              reportMissingImports: 'none',
+              reportMissingModuleSource: 'none',
+              reportMissingTypeStubs: 'none',
+              reportUnknownMemberType: 'none',
+              reportUnknownArgumentType: 'none',
+              reportUnknownVariableType: 'none',
+              reportUnknownParameterType: 'none',
+              reportUnknownLambdaType: 'none',
+              reportAny: 'none',
+              reportExplicitAny: 'none',
+              reportUnusedCallResult: 'none',
+              reportUnusedImport: 'none',
+            },
+          },
+        },
+      },
     },
     typescript: {
       cmd: ['tsc', '--lsp', '--stdio'],
